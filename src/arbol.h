@@ -87,5 +87,6 @@ public:
     void showSuccessionLine();
     void changeMageData(int id, const Mage& newData);
     void showMageSpells(int id);
+    void assignNewOwner();
     // Puedes agregar más métodos específicos si lo necesitas
 };

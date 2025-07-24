@@ -145,3 +145,91 @@ void Tree<Mage>::showMageSpells(int id) {
     for (int i = 0; i < node->data.spells.size; ++i)
         cout << "- " << node->data.spells[i] << endl;
 }
+
+template<>
+void Tree<Mage>::assignNewOwner() {
+    // 1. Buscar el nodo actual dueño
+    Node<Mage>* owner = nullptr;
+    struct Finder {
+        static Node<Mage>* findOwner(Node<Mage>* node) {
+            if (!node) return nullptr;
+            if (node->data.is_owner) return node;
+            Node<Mage>* res = findOwner(node->left);
+            if (res) return res;
+            return findOwner(node->right);
+        }
+    };
+    owner = Finder::findOwner(root);
+    if (!owner) return;
+
+    // 2. Verificar si está muerto o >70 años
+    if (!owner->data.is_dead && owner->data.age <= 70) return;
+
+    // 3. Buscar nuevo dueño según reglas
+    Node<Mage>* candidate = nullptr;
+
+    // Primer hijo vivo con magia elemental o unique
+    if (owner->left && !owner->left->data.is_dead &&
+        (owner->left->data.type_magic == "elemental" || owner->left->data.type_magic == "unique")) {
+        candidate = owner->left;
+    } else if (owner->right && !owner->right->data.is_dead &&
+        (owner->right->data.type_magic == "elemental" || owner->right->data.type_magic == "unique")) {
+        candidate = owner->right;
+    }
+
+    // Si no, primer hijo vivo con magia mixed
+    if (!candidate) {
+        if (owner->left && !owner->left->data.is_dead && owner->left->data.type_magic == "mixed")
+            candidate = owner->left;
+        else if (owner->right && !owner->right->data.is_dead && owner->right->data.type_magic == "mixed")
+            candidate = owner->right;
+    }
+
+    // Si no, primer hijo hombre vivo
+    if (!candidate) {
+        if (owner->left && !owner->left->data.is_dead && owner->left->data.gender == 'H')
+            candidate = owner->left;
+        else if (owner->right && !owner->right->data.is_dead && owner->right->data.gender == 'H')
+            candidate = owner->right;
+    }
+
+    // Si no tiene hijos vivos, buscar compañero discípulo (hermano) vivo y que comparta magia
+    if (!candidate) {
+        // Buscar el padre del dueño actual
+        Node<Mage>* father = findById(owner->data.id_father);
+        if (father) {
+            // Buscar hermano (compañero discípulo)
+            if (father->left && father->left != owner && !father->left->data.is_dead &&
+                father->left->data.type_magic == owner->data.type_magic)
+                candidate = father->left;
+            else if (father->right && father->right != owner && !father->right->data.is_dead &&
+                father->right->data.type_magic == owner->data.type_magic)
+                candidate = father->right;
+        }
+    }
+
+
+    // Si no, buscar compañero de su maestro (tío) independientemente de la magia
+    if (!candidate) {
+        Node<Mage>* father = findById(owner->data.id_father);
+        if (father) {
+            Node<Mage>* grandfather = findById(father->data.id_father);
+            if (grandfather) {
+                if (grandfather->left && grandfather->left != father && !grandfather->left->data.is_dead)
+                    candidate = grandfather->left;
+                else if (grandfather->right && grandfather->right != father && !grandfather->right->data.is_dead)
+                    candidate = grandfather->right;
+            }
+        }
+    }
+
+   
+    // Asignar nuevo dueño 
+    if (candidate) {
+        owner->data.is_owner = false;
+        candidate->data.is_owner = true;
+        cout << "Nuevo dueño del hechizo: " << candidate->data.name << " " << candidate->data.last_name << endl;
+    } else {
+        cout << "No se encontró un nuevo dueño para el hechizo.\n";
+    }
+}
