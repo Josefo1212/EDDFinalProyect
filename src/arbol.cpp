@@ -209,7 +209,7 @@ void Tree<Mage>::assignNewOwner() {
     }
 
 
-    // Si no, buscar compañero de su maestro (tío) independientemente de la magia
+    // Si no buscar compañero de su maestro (tío) independientemente de la magia
     if (!candidate) {
         Node<Mage>* father = findById(owner->data.id_father);
         if (father) {
@@ -223,6 +223,44 @@ void Tree<Mage>::assignNewOwner() {
         }
     }
 
+    // Si no buscar la mujer más joven con discípulos viva y magia mixed
+    if (!candidate) {
+    Node<Mage>* best = nullptr;
+    struct {
+        static void search(Node<Mage>* node, Node<Mage>*& best) {
+            if (!node) return;
+            bool hasChildren = node->left || node->right;
+            if (!node->data.is_dead && node->data.gender == 'M' && hasChildren && node->data.type_magic == "mixed") {
+                if (!best || node->data.age < best->data.age)
+                    best = node;
+            }
+            search(node->left, best);
+            search(node->right, best);
+        }
+    } searcher;
+    searcher.search(root, best);
+    if (best) candidate = best;
+}
+
+
+    // si no buscar a la mujer más joven viva
+if (!candidate) {
+    Node<Mage>* best = nullptr;
+    struct {
+        static void search(Node<Mage>* node, Node<Mage>*& best) {
+            if (!node) return;
+            if (!node->data.is_dead && node->data.gender == 'M') {
+                if (!best || node->data.age < best->data.age)
+                    best = node;
+            }
+            search(node->left, best);
+            search(node->right, best);
+        }
+    } searcher;
+    searcher.search(root, best);
+    if (best) candidate = best;
+
+   
    
     // Asignar nuevo dueño 
     if (candidate) {
