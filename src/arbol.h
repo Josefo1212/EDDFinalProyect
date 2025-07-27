@@ -39,7 +39,7 @@ struct ChildList {
 class Mage {
 public:
     int id;
-    string name;
+    string first_name;
     string last_name;
     char gender; // 'H' o 'M'
     int age;
@@ -50,8 +50,13 @@ public:
     StringList spells; // Lista de hechizos
 
     Mage() {}
-    Mage(int id, string name, string last_name, char gender, int age, int id_father, bool is_dead, string type_magic, bool is_owner)
-        : id(id), name(name), last_name(last_name), gender(gender), age(age), id_father(id_father), is_dead(is_dead), type_magic(type_magic), is_owner(is_owner) {}
+    Mage(int id, string first_name, string last_name, char gender, int age, int id_father, bool is_dead, string type_magic, bool is_owner)
+        : id(id), first_name(first_name), last_name(last_name), gender(gender), age(age), id_father(id_father), is_dead(is_dead), type_magic(type_magic), is_owner(is_owner) {}
+
+    // Agregar método para añadir hechizo
+    void addSpell(const string& spell) {
+        spells.push_back(spell);
+    }
 };
 
 // Declaración adelantada de Node para Tree
@@ -72,7 +77,7 @@ public:
     void setRight(Node<T>* r) { right = r; }
     void setData(T d) { data = d; }
     void print() {
-        cout << data.id << " " << data.name << " " << data.last_name << " " << data.age << " " << data.type_magic << (data.is_owner ? " (OWNER)" : "") << endl;
+        cout << data.id << " " << data.first_name << " " << data.last_name << " " << data.age << " " << data.type_magic << (data.is_owner ? " (OWNER)" : "") << endl;
     }
 };
 
@@ -88,5 +93,9 @@ public:
     void changeMageData(int id, const Mage& newData);
     void showMageSpells(int id);
     void assignNewOwner();
+    // Nuevos métodos requeridos:
+    void showMageRelations(int id); // Discípulos y maestros
+    void showMainBranch(); // Rama principal
+    void addSpellToMage(int id, const string& spell); // Agregar hechizo
     // Puedes agregar más métodos específicos si lo necesitas
 };
