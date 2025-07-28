@@ -1,10 +1,11 @@
+
 #include <iostream>
 #include "./src/arbol.h"
 using namespace std;
 
 int main() {
     Tree<Mage> tree;
-    const char* csvfile = "bin/mago.csv"; // <-- sin "./" al inicio
+    const char* csvfile = "bin/mago.csv"; 
     tree.loadFromCSV(csvfile);
 
     int opcion;
@@ -49,7 +50,6 @@ int main() {
                 // Guardar el árbol en el archivo CSV recorriendo en preorden
                 ofstream out("bin/mago.csv");
                 out << "id,first_name,last_name,gender,age,id_father,is_dead,type_magic,is_owner\n";
-                // función lambda para recorrer y guardar
                 auto saveNode = [&](auto&& self, Node<Mage>* node) -> void {
                     if (!node) return;
                     Mage& mg = node->data;
@@ -57,7 +57,7 @@ int main() {
                     self(self, node->left);
                     self(self, node->right);
                 };
-                saveNode(saveNode, tree.findById(1)); // asume raíz id=1
+                saveNode(saveNode, tree.findById(1));
                 out.close();
                 cout << "Datos cambiados y guardados en el archivo CSV.\n";
             } else {
@@ -74,8 +74,28 @@ int main() {
             cout << "Nombre del hechizo: "; cin >> spell;
             tree.addSpellToMage(id, spell);
         } else if (opcion == 7) {
-            tree.assignNewOwner();
-        }
+    tree.assignNewOwner();
+    ofstream out("bin/mago.csv");
+    if (!out.is_open()) {
+        cout << "No se pudo abrir el archivo CSV.\n";
+    } else {
+        out << "id,first_name,last_name,gender,age,id_father,is_dead,type_magic,is_owner\n";
+
+        auto saveNode = [&](auto&& self, Node<Mage>* node) -> void {
+            if (!node) return;
+            Mage& mg = node->data;
+            out << mg.id << "," << mg.first_name << "," << mg.last_name << "," << mg.gender << ","
+                << mg.age << "," << mg.id_father << "," << (mg.is_dead ? 1 : 0) << ","
+                << mg.type_magic << "," << (mg.is_owner ? 1 : 0) << "\n";
+            self(self, node->left);
+            self(self, node->right);
+        };
+
+        saveNode(saveNode, tree.findById(1));
+        out.close();
+        cout << "Dueno reasignado y cambios guardados\n";
+    }
+}
     } while (opcion != 0);
 
     return 0;

@@ -208,7 +208,7 @@ void Tree<Mage>::changeMageData(int id, const Mage& newData) {
 
 template<>
 void Tree<Mage>::assignNewOwner() {
-    // 1. Buscar el nodo actual dueño
+    // Buscar el nodo que actualmente posee el hechizo
     Node<Mage>* owner = nullptr;
     struct Finder {
         static Node<Mage>* findOwner(Node<Mage>* node) {
@@ -225,7 +225,7 @@ void Tree<Mage>::assignNewOwner() {
         return;
     }
 
-    // 2. Verificar si está muerto o >70 años
+    // Verificar si el dueno actual sigue vivo y tiene 70 años o menos
     if (!owner->data.is_dead && owner->data.age <= 70) {
         cout << "No se requiere reasignacion. El dueno actual (" << owner->data.first_name << " " << owner->data.last_name << ") sigue siendo el dueno.\n";
         return;
@@ -233,77 +233,96 @@ void Tree<Mage>::assignNewOwner() {
 
     Node<Mage>* candidate = nullptr;
 
-    // Si el dueño pasa de los 70 años, buscar discípulo con magia igual, si no, al más viejo
+    // Si el dueño tiene más de 70 años y tiene discípulos, buscar primero discípulo vivo con magia igual
     if (owner->data.age > 70 && (owner->left || owner->right)) {
-        Node<Mage>* best = nullptr;
         if (owner->left && !owner->left->data.is_dead && owner->left->data.type_magic == owner->data.type_magic)
-            best = owner->left;
+            candidate = owner->left;
         else if (owner->right && !owner->right->data.is_dead && owner->right->data.type_magic == owner->data.type_magic)
-            best = owner->right;
-        if (!best) {
-            // Al más viejo
+            candidate = owner->right;
+        else {
+            // Si no hay magia igual, elegir al discípulo vivo de mayor edad
             if (owner->left && !owner->left->data.is_dead)
-                best = owner->left;
-            if (owner->right && !owner->right->data.is_dead &&
-                (!best || owner->right->data.age > best->data.age))
-                best = owner->right;
+                candidate = owner->left;
+            if (owner->right && !owner->right->data.is_dead && (!candidate || owner->right->data.age > candidate->data.age))
+                candidate = owner->right;
         }
-        if (best) candidate = best;
     }
 
-    // ...existing code for normal succession rules...
-    if (!candidate) {
-        // Primer hijo vivo con magia elemental o unique
+    // Si el dueño ha muerto y tiene discípulos, buscar por tipo de magia priorizando elemental y unique
+    if (!candidate && (owner->left || owner->right)) {
+        // Buscar discípulo vivo con magia elemental o unique
         if (owner->left && !owner->left->data.is_dead &&
-            (owner->left->data.type_magic == "elemental" || owner->left->data.type_magic == "unique")) {
+            (owner->left->data.type_magic == "elemental" || owner->left->data.type_magic == "unique"))
             candidate = owner->left;
-        } else if (owner->right && !owner->right->data.is_dead &&
-            (owner->right->data.type_magic == "elemental" || owner->right->data.type_magic == "unique")) {
+        else if (owner->right && !owner->right->data.is_dead &&
+                 (owner->right->data.type_magic == "elemental" || owner->right->data.type_magic == "unique"))
             candidate = owner->right;
+
+        // Si no hay elemental o unique, buscar magia mixta
+        if (!candidate) {
+            if (owner->left && !owner->left->data.is_dead && owner->left->data.type_magic == "mixed")
+                candidate = owner->left;
+            else if (owner->right && !owner->right->data.is_dead && owner->right->data.type_magic == "mixed")
+                candidate = owner->right;
+        }
+
+        // Si no hay magia válida, buscar primer discípulo hombre vivo
+        if (!candidate) {
+            if (owner->left && !owner->left->data.is_dead && owner->left->data.gender == 'H')
+                candidate = owner->left;
+            else if (owner->right && !owner->right->data.is_dead && owner->right->data.gender == 'H')
+                candidate = owner->right;
         }
     }
-    if (!candidate) {
-        if (owner->left && !owner->left->data.is_dead && owner->left->data.type_magic == "mixed")
-            candidate = owner->left;
-        else if (owner->right && !owner->right->data.is_dead && owner->right->data.type_magic == "mixed")
-            candidate = owner->right;
-    }
-    if (!candidate) {
-        if (owner->left && !owner->left->data.is_dead && owner->left->data.gender == 'H')
-            candidate = owner->left;
-        else if (owner->right && !owner->right->data.is_dead && owner->right->data.gender == 'H')
-            candidate = owner->right;
-    }
-    if (!candidate) {
+
+    // Si el dueño no tiene hijos, buscar compañero discípulo con magia igual
+    if (!candidate && !owner->left && !owner->right) {
         Node<Mage>* father = findById(owner->data.id_father);
         if (father) {
+            // Buscar compañero vivo con magia igual
             if (father->left && father->left != owner && !father->left->data.is_dead &&
                 father->left->data.type_magic == owner->data.type_magic)
                 candidate = father->left;
             else if (father->right && father->right != owner && !father->right->data.is_dead &&
-                father->right->data.type_magic == owner->data.type_magic)
+                     father->right->data.type_magic == owner->data.type_magic)
                 candidate = father->right;
-        }
-    }
-    if (!candidate) {
-        Node<Mage>* father = findById(owner->data.id_father);
-        if (father) {
-            Node<Mage>* grandfather = findById(father->data.id_father);
-            if (grandfather) {
-                if (grandfather->left && grandfather->left != father && !grandfather->left->data.is_dead)
-                    candidate = grandfather->left;
-                else if (grandfather->right && grandfather->right != father && !grandfather->right->data.is_dead)
-                    candidate = grandfather->right;
+
+            // Si no hay coincidencia directa, buscar hijos del compañero
+            if (!candidate) {
+                Node<Mage>* companion = (father->left == owner) ? father->right : father->left;
+                if (companion && !companion->data.is_dead) {
+                    // Buscar primer hijo vivo del compañero con magia elemental o unique
+                    if (companion->left && !companion->left->data.is_dead &&
+                        (companion->left->data.type_magic == "elemental" || companion->left->data.type_magic == "unique"))
+                        candidate = companion->left;
+                    else if (companion->right && !companion->right->data.is_dead &&
+                             (companion->right->data.type_magic == "elemental" || companion->right->data.type_magic == "unique"))
+                        candidate = companion->right;
+                }
+
+                // Si el compañero está muerto y no tiene hijos, buscar compañero del maestro
+                if (!candidate && (!companion || companion->data.is_dead)) {
+                    Node<Mage>* grandfather = findById(father->data.id_father);
+                    if (grandfather) {
+                        if (grandfather->left && grandfather->left != father && !grandfather->left->data.is_dead)
+                            candidate = grandfather->left;
+                        else if (grandfather->right && grandfather->right != father && !grandfather->right->data.is_dead)
+                            candidate = grandfather->right;
+                    }
+                }
             }
         }
     }
+
+    // Si ningún caso se cumple, buscar mujer viva más joven con discípulos cuyo maestro haya sido dueño y con magia mixta
     if (!candidate) {
         Node<Mage>* best = nullptr;
         struct {
             static void search(Node<Mage>* node, Node<Mage>*& best) {
                 if (!node) return;
                 bool hasChildren = node->left || node->right;
-                if (!node->data.is_dead && node->data.gender == 'M' && hasChildren && node->data.type_magic == "mixed") {
+                if (!node->data.is_dead && node->data.gender == 'M' &&
+                    hasChildren && node->data.type_magic == "mixed") {
                     if (!best || node->data.age < best->data.age)
                         best = node;
                 }
@@ -314,6 +333,8 @@ void Tree<Mage>::assignNewOwner() {
         searcher.search(root, best);
         if (best) candidate = best;
     }
+
+    // Si todo lo anterior falla, buscar mujer viva más joven en todo el árbol
     if (!candidate) {
         Node<Mage>* best = nullptr;
         struct {
@@ -331,18 +352,19 @@ void Tree<Mage>::assignNewOwner() {
         if (best) candidate = best;
     }
 
-    // Asignar nuevo dueño y mostrar resultado
+    // Asignar nuevo dueño si se encontró candidato válido
     if (candidate) {
         string prev_owner = owner->data.first_name + " " + owner->data.last_name;
         string new_owner = candidate->data.first_name + " " + candidate->data.last_name;
         owner->data.is_owner = false;
         candidate->data.is_owner = true;
         cout << "Cambio realizado: " << prev_owner << " deja de ser dueno.\n";
-        cout << "Nuevo dueño del hechizo: " << new_owner << endl;
+        cout << "Nuevo dueno del hechizo: " << new_owner << endl;
     } else {
-        cout << "No se encontro un nuevo dueño para el hechizo. No se realizo ningun cambio.\n";
+        cout << "No se encontro un nuevo dueno para el hechizo. No se realizo ningun cambio.\n";
     }
 }
+
 
 template<>
 void Tree<Mage>::showMageSpells(int id) {
